@@ -2,32 +2,35 @@
 #include "SmartDashboard/SmartDashboard.h"
 
 // Joystick IDs
-const int STICK_LEFT_DRIVE = 1;
-const int STICK_RIGHT_DRIVE = 2;
-const int STICK_AUX = 3;
+const int STICK_DRIVE = 1;
+const int STICK_AUX = 2;
 const int STICK_VIRTUAL = 4;
 
-// Both driver joysticks
-const int DRIVE_TURBO = 1;
-const int DRIVE_SLOW = 2;
-const int DRIVE_FLASH = 3;
+// Driver Stick Axis - SteelSeries Joypad
+const int DRIVE_LEFT_STICK = 2;
+const int DRIVE_RIGHT_STICK = 5;
 
-// Left driver joystick
+// Driver joystick
+const int DRIVE_TURBO = 7; //Steelseries Left Bumper
+const int DRIVE_SLOW = 8; //Steelseries Right Bumper
+const int DRIVE_FLASH = 9; //Steelseries 'Square' button
+const int RESET_MOTORS = 10; //Steelseries 'Triangle' button
 const int DEBUG_DRIVE = 6;
+
+// Aux driver joystick
+const int AUX_INITIATE_KICK = 2;    // Kick
+const int AUX_RAISE_ARM = 4;		// Raise Arm
+const int AUX_RELEASE_SLOW = 6;     // Normal Out
+const int AUX_INTAKE_SLOW = 5;   	// Normal in
+const int AUX_RELEASE_FAST = 10;	// Fast Out
+const int AUX_GUARD_BUTTON = 11;    // Wiskers
+const int AUX_SHOT_CONTROL = 6;		// DPad Left=Truss (neg values), Right=High (pos values)
+const int AUX_SHOT_TRUSS = -1;
+const int AUX_SHOT_HIGH = 1;
+
 const int DEBUG_INTAKE = 7;
 const int DEBUG_KICKER = 10;
 const int DEBUG_CLEAR = 11;
-
-// Right driver joystick
-const int RESET_MOTORS = 11;
-
-// Aux driver joystick
-const int AUX_ACQUIRE = 1;
-const int AUX_PASS_FAST = 3;
-const int AUX_POSITION = 4;
-const int AUX_GUARD_BUTTON = 2;
-const int AUX_GUARD_BUTTON_TOP = 6;
-const int AUX_RELEASE_SLOW = 5;
 
 // Aux driver panel (virtual joystick)
 const int VIRTUAL_TRUSS_SHOT = 1;
@@ -56,26 +59,30 @@ const char* INTAKE_ANGLE = "intake_angle";
 
 Controls::Controls(Drive &d, Intake &i, Kicker &k, Lights &l) :
 	drive(d), intake(i), kicker(k), lights(l),
+	// Controllers
+	stick_drive(STICK_DRIVE),
+	stick_aux(STICK_AUX),
+	stick_virtual(STICK_VIRTUAL),
 
-	stick_drive_left(STICK_LEFT_DRIVE), stick_drive_right(STICK_RIGHT_DRIVE),
-			stick_aux(STICK_AUX), stick_virtual(STICK_VIRTUAL),
+	// Broken 
+	broken_cradle_pot(stick_virtual, BROKEN_SWITCH_1),
+	broken_kicker_sensors(stick_virtual, BROKEN_SWITCH_2),
+	guard_tuning(stick_virtual, BROKEN_SWITCH_3),
+	alternate_pot(stick_virtual, BROKEN_SWITCH_4),
+	intake_speed_tuning(stick_virtual, BROKEN_SWITCH_5),
+	auto_test(stick_virtual, BROKEN_SWITCH_6),
+	
+	//Kick
+	trussKick(stick_virtual, VIRTUAL_TRUSS_SHOT),
+	highKick(stick_virtual, VIRTUAL_HIGH_SHOT),
+	manualKick(stick_virtual, VIRTUAL_MANUAL_POWER_PUSH),
 
-			broken_cradle_pot(stick_virtual, BROKEN_SWITCH_1),
-			broken_kicker_sensors(stick_virtual, BROKEN_SWITCH_2),
-			guard_tuning(stick_virtual, BROKEN_SWITCH_3),
-			alternate_pot(stick_virtual, BROKEN_SWITCH_4),
-			intake_speed_tuning(stick_virtual, BROKEN_SWITCH_5),
-			auto_test(stick_virtual, BROKEN_SWITCH_6),
-
-			trussKick(stick_virtual, VIRTUAL_TRUSS_SHOT),
-			highKick(stick_virtual, VIRTUAL_HIGH_SHOT),
-			manualKick(stick_virtual, VIRTUAL_MANUAL_POWER_PUSH),
-
-			resetMotors(stick_drive_right, RESET_MOTORS) {
+	// resetMotors(stick_drive_right, RESET_MOTORS) { -- 1511 Code
+	resetMotors(stick_drive, RESET_MOTORS) { 
+			
 	intake.setPotBroken(false);
 	kicker.setSensorsBroken(false);
 	lastDebug = kDebugClear;
-
 	start_dash = true;
 }
 
@@ -99,8 +106,7 @@ void Controls::process(bool enabled) {
 	}
 
 	lights.flash(
-			stick_drive_left.GetRawButton(DRIVE_FLASH)
-					|| stick_drive_right.GetRawButton(DRIVE_FLASH));
+			stick_drive.GetRawButton(DRIVE_FLASH));
 
 	processBrokenSwitches();
 	if (enabled) {
@@ -130,7 +136,8 @@ void Controls::processBrokenSwitches() {
 		intake.setPotBroken(broken_cradle_pot.value());
 	}
 	if (broken_kicker_sensors.poll()) {
-		kicker.setSensorsBroken(broken_kicker_sensors.value());
+		//kicker.setSensorsBroken(broken_kicker_sensors.value());
+		kicker.setSensorsBroken(1);
 	}
 	if (guard_tuning.poll()) {
 	}
@@ -142,6 +149,7 @@ void Controls::processBrokenSwitches() {
 	if (auto_test.poll()) {
 	}
 }
+
 void Controls::processSmartDashboard() {
 	bool b = intake.isBallPresent();
 	if (b != prev_ball) {
@@ -184,12 +192,13 @@ double stick_power(double v, bool turbo, bool slow) {
 }
 
 void Controls::processDriveSticks() {
-	bool turbo = stick_drive_left.GetRawButton(DRIVE_TURBO)
-			|| stick_drive_right.GetRawButton(DRIVE_TURBO);
-	bool slow = stick_drive_left.GetRawButton(DRIVE_SLOW)
-			|| stick_drive_right.GetRawButton(DRIVE_SLOW);
-	double left_power = stick_power(stick_drive_left.GetY(), turbo, slow);
-	double right_power = stick_power(stick_drive_right.GetY(), turbo, slow);
+	 bool turbo = stick_drive.GetRawButton(DRIVE_TURBO);
+	 bool slow = stick_drive.GetRawButton(DRIVE_SLOW);	
+
+	// Blindinglight stick control using Steelseries contoller
+	double left_power = stick_power(stick_drive.GetRawAxis(DRIVE_LEFT_STICK), turbo, slow);
+	double right_power = stick_power(stick_drive.GetRawAxis(DRIVE_RIGHT_STICK), turbo, slow);
+		
 	drive.tankDrive(left_power, right_power);
 }
 
@@ -197,13 +206,13 @@ void Controls::processDebug() {
 	//
 	// If several debug buttons are pressed, the most important is selected.
 	//
-	if (stick_drive_left.GetRawButton(DEBUG_DRIVE)) {
+	if (stick_drive.GetRawButton(DEBUG_DRIVE)) {
 		lastDebug = kDebugDrive;
-	} else if (stick_drive_left.GetRawButton(DEBUG_INTAKE)) {
+	} else if (stick_drive.GetRawButton(DEBUG_INTAKE)) {
 		lastDebug = kDebugIntake;
-	} else if (stick_drive_left.GetRawButton(DEBUG_KICKER)) {
+	} else if (stick_drive.GetRawButton(DEBUG_KICKER)) {
 		lastDebug = kDebugKicker;
-	} else if (stick_drive_left.GetRawButton(DEBUG_CLEAR)) {
+	} else if (stick_drive.GetRawButton(DEBUG_CLEAR)) {
 		lastDebug = kDebugClear;
 	}
 	switch (lastDebug) {
@@ -227,44 +236,45 @@ void Controls::processAuxSide() {
 	bool icspd = intake_speed_tuning.value();
 	intake.setCustomSpinSpeed(
 			scaleLinear(stick_aux.GetRawAxis(4), -1.0, 1.0, 0.2, 1));
-	if (stick_aux.GetRawButton(AUX_ACQUIRE)) {
+	if (stick_aux.GetRawButton(AUX_INTAKE_SLOW)) {
 		intake.spin(icspd ? Intake::kSpinCustomIn : Intake::kSpinIn);
 	} else if (stick_aux.GetRawButton(AUX_RELEASE_SLOW)) {
 		intake.spin(icspd ? Intake::kSpinCustomOut : Intake::kSpinOutSlow);
-	} else if (stick_aux.GetRawButton(AUX_PASS_FAST)) {
+	} else if (stick_aux.GetRawButton(AUX_RELEASE_FAST)) {
 		intake.spin(icspd ? Intake::kSpinCustomOut : Intake::kSpinOut);
 	} else {
 		intake.spin(Intake::kSpinNot);
 	}
 
 	// intake lift arm control
-	if (stick_aux.GetRawButton(AUX_POSITION)) {
+	if (stick_aux.GetRawButton(AUX_RAISE_ARM)) {
 		intake.goToLocation(Intake::kLocTeleopKick);
 	} else {
-		double auxY = deadband(stick_aux.GetY(), INTAKE_JOYSTICK_DEADBAND);
-		intake.moveArm(-auxY);
+		double auxLoc = deadband(stick_aux.GetRawAxis(2), INTAKE_JOYSTICK_DEADBAND);
+		intake.moveArm(-auxLoc);
 	}
 
 	// control guards and the broken switch enabled case
 	if (guard_tuning.value()) {
-		kicker.overrideGuards(
-				stick_drive_left.GetRawAxis(Joystick::kDefaultThrottleAxis),
-				stick_drive_right.GetRawAxis(Joystick::kDefaultThrottleAxis));
+		/* 1511 Code
+		 * Need to re-implement
+		 * kicker.overrideGuards(
+		 *		 stick_drive.GetRawAxis(Joystick::kDefaultThrottleAxis),
+		 *		 stick_drive_right.GetRawAxis(Joystick::kDefaultThrottleAxis));
+		 *
+		 */
+		
 	} else {
-		kicker.setGuard(
-				stick_aux.GetRawButton(AUX_GUARD_BUTTON)
-						|| stick_aux.GetRawButton(AUX_GUARD_BUTTON_TOP));
+		kicker.setGuard(stick_aux.GetRawButton(AUX_GUARD_BUTTON));
 	}
 
-	// Kicking is initiated on the rising edge of a button press.
-	if (trussKick.poll() && trussKick.value()) {
+	if ((stick_aux.GetRawAxis(AUX_SHOT_CONTROL) == AUX_SHOT_TRUSS) &&
+			stick_aux.GetRawButton(AUX_INITIATE_KICK)) {
 		kicker.startKick(TRUSS_KICK_POWER);
 	}
-	if (highKick.poll() && highKick.value()) {
+	if ((stick_aux.GetRawAxis(AUX_SHOT_CONTROL) == AUX_SHOT_HIGH) && 
+			stick_aux.GetRawButton(AUX_INITIATE_KICK)) {
 		kicker.startKick(HIGH_GOAL_POWER);
-	}
-	if (manualKick.poll() && manualKick.value()) {
-		kicker.startKick(getManualPower());
 	}
 }
 

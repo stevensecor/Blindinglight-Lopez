@@ -51,8 +51,7 @@ private:
 	Kicker &kicker;
 	Lights &lights;
 
-	Joystick stick_drive_left;
-	Joystick stick_drive_right;
+	Joystick stick_drive; //-- Blindinglight implemetation
 	Joystick stick_aux;
 	Joystick stick_virtual;
 
