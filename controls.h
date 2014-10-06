@@ -38,6 +38,7 @@ public:
 	 */
 	Auto::AutoRoutine getAutoMode();
 private:
+	
 	void processBrokenSwitches();
 	void processSmartDashboard();
 	void processDriveSticks();
@@ -72,7 +73,7 @@ private:
 	double prev_angle;
 	bool prev_ball;
 	bool start_dash;
-	
+		
 	typedef enum {kDebugDrive, kDebugIntake, kDebugKicker, kDebugClear} DebugType;
 	DebugType lastDebug;
 };

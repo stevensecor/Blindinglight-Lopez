@@ -4,6 +4,7 @@
 // Joystick IDs
 const int STICK_DRIVE = 1;
 const int STICK_AUX = 2;
+const int DRIVER_STATION = 3;
 const int STICK_VIRTUAL = 4;
 
 // Driver Stick Axis - SteelSeries Joypad
@@ -15,7 +16,6 @@ const int DRIVE_TURBO = 7; //Steelseries Left Bumper
 const int DRIVE_SLOW = 8; //Steelseries Right Bumper
 const int DRIVE_FLASH = 9; //Steelseries 'Square' button
 const int RESET_MOTORS = 10; //Steelseries 'Triangle' button
-const int DEBUG_DRIVE = 6;
 
 // Aux driver joystick
 const int AUX_INITIATE_KICK = 2;    // Kick
@@ -23,14 +23,22 @@ const int AUX_RAISE_ARM = 4;		// Raise Arm
 const int AUX_RELEASE_SLOW = 6;     // Normal Out
 const int AUX_INTAKE_SLOW = 5;   	// Normal in
 const int AUX_RELEASE_FAST = 10;	// Fast Out
-const int AUX_GUARD_BUTTON = 11;    // Wiskers
 const int AUX_SHOT_CONTROL = 6;		// DPad Left=Truss (neg values), Right=High (pos values)
 const int AUX_SHOT_TRUSS = -1;
 const int AUX_SHOT_HIGH = 1;
 
-const int DEBUG_INTAKE = 7;
-const int DEBUG_KICKER = 10;
-const int DEBUG_CLEAR = 11;
+// Debug Modes -- Only 1 at a time.
+const int DEBUG_DRIVE = 0;
+const int DEBUG_INTAKE = 1;
+const int DEBUG_KICKER = 0;
+const int DEBUG_CLEAR = 0;
+
+// Auto choice -- Only 1 at a time.
+const int AUTO_CHOICE_2 = 0;
+const int AUTO_CHOICE_1 = 0;
+
+// Guard Constant
+const int GUARD_OPEN = 1;    // Wiskers
 
 // Aux driver panel (virtual joystick)
 const int VIRTUAL_TRUSS_SHOT = 1;
@@ -106,7 +114,7 @@ void Controls::process(bool enabled) {
 	}
 
 	lights.flash(
-			stick_drive.GetRawButton(DRIVE_FLASH));
+		stick_drive.GetRawButton(DRIVE_FLASH));
 
 	processBrokenSwitches();
 	if (enabled) {
@@ -118,16 +126,12 @@ void Controls::process(bool enabled) {
 }
 
 Auto::AutoRoutine Controls::getAutoMode() {
-	if (stick_virtual.GetRawButton(VIRTUAL_AUTO_CHOICE_1)) {
+	if (AUTO_CHOICE_1) {
 		return Auto::kAutoA;
-	} else if (stick_virtual.GetRawButton(VIRTUAL_AUTO_CHOICE_2)) {
+	} else if (AUTO_CHOICE_2) {
 		return Auto::kAutoB;
 	} else {
-		if (auto_test.value()) {
-			return Auto::kAutoTest;
-		} else {
-			return Auto::kNone;
-		}
+		return Auto::kNone;
 	}
 }
 
@@ -137,7 +141,7 @@ void Controls::processBrokenSwitches() {
 	}
 	if (broken_kicker_sensors.poll()) {
 		//kicker.setSensorsBroken(broken_kicker_sensors.value());
-		kicker.setSensorsBroken(1);
+		//kicker.setSensorsBroken(1);
 	}
 	if (guard_tuning.poll()) {
 	}
@@ -206,13 +210,13 @@ void Controls::processDebug() {
 	//
 	// If several debug buttons are pressed, the most important is selected.
 	//
-	if (stick_drive.GetRawButton(DEBUG_DRIVE)) {
+ 	if (DEBUG_DRIVE) {
 		lastDebug = kDebugDrive;
-	} else if (stick_drive.GetRawButton(DEBUG_INTAKE)) {
+	} else if (DEBUG_INTAKE) {
 		lastDebug = kDebugIntake;
-	} else if (stick_drive.GetRawButton(DEBUG_KICKER)) {
+	} else if (DEBUG_KICKER) {
 		lastDebug = kDebugKicker;
-	} else if (stick_drive.GetRawButton(DEBUG_CLEAR)) {
+	} else if (DEBUG_CLEAR) {
 		lastDebug = kDebugClear;
 	}
 	switch (lastDebug) {
@@ -255,17 +259,9 @@ void Controls::processAuxSide() {
 	}
 
 	// control guards and the broken switch enabled case
-	if (guard_tuning.value()) {
-		/* 1511 Code
-		 * Need to re-implement
-		 * kicker.overrideGuards(
-		 *		 stick_drive.GetRawAxis(Joystick::kDefaultThrottleAxis),
-		 *		 stick_drive_right.GetRawAxis(Joystick::kDefaultThrottleAxis));
-		 *
-		 */
-		
-	} else {
-		kicker.setGuard(stick_aux.GetRawButton(AUX_GUARD_BUTTON));
+	if ((stick_aux.GetRawAxis(AUX_SHOT_CONTROL) == AUX_SHOT_TRUSS) ||
+			(stick_aux.GetRawAxis(AUX_SHOT_CONTROL) == AUX_SHOT_HIGH)) {
+		kicker.setGuard(GUARD_OPEN);
 	}
 
 	if ((stick_aux.GetRawAxis(AUX_SHOT_CONTROL) == AUX_SHOT_TRUSS) &&
