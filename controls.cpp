@@ -29,13 +29,13 @@ const int AUX_SHOT_HIGH = 1;
 
 // Debug Modes -- Only 1 at a time.
 const int DEBUG_DRIVE = 0;
-const int DEBUG_INTAKE = 1;
-const int DEBUG_KICKER = 0;
+const int DEBUG_INTAKE = 0;
+const int DEBUG_KICKER = 1;
 const int DEBUG_CLEAR = 0;
 
 // Auto choice -- Only 1 at a time.
 const int AUTO_CHOICE_2 = 0;
-const int AUTO_CHOICE_1 = 0;
+const int AUTO_CHOICE_1 = 1;
 
 // Guard Constant
 const int GUARD_OPEN = 1;    // Wiskers
@@ -255,7 +255,8 @@ void Controls::processAuxSide() {
 		intake.goToLocation(Intake::kLocTeleopKick);
 	} else {
 		double auxLoc = deadband(stick_aux.GetRawAxis(2), INTAKE_JOYSTICK_DEADBAND);
-		intake.moveArm(-auxLoc);
+		//intake.moveArm(-auxLoc);
+		intake.moveArm(auxLoc);
 	}
 
 	// control guards and the broken switch enabled case
